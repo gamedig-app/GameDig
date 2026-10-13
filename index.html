@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>新着ゲームさがし</title>
 <style>
-  :root { --bg:#f6f7fb; --fg:#1b1d29; --sub:#6b7085; --card:#fff; --accent:#3b5bfd; }
+  :root { --bg:#f6f7fb; --fg:#1b1d29; --sub:#6b7085; --card:#fff; --accent:#3b5bfd; --line:#d8dbe8; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#12131a; --fg:#eceef7; --sub:#9a9fb5; --card:#1d1f2b; --accent:#7b93ff; }
+    :root { --bg:#12131a; --fg:#eceef7; --sub:#9a9fb5; --card:#1d1f2b; --accent:#7b93ff; --line:#33364a; }
   }
   * { box-sizing: border-box; }
   body { margin:0; padding:16px; background:var(--bg); color:var(--fg);
@@ -15,54 +15,103 @@
   h1 { font-size:20px; margin:0 0 12px; }
   .row { display:flex; gap:8px; margin-bottom:8px; }
   input, select, button { font-size:16px; padding:10px; border-radius:10px;
-         border:1px solid var(--sub); background:var(--card); color:var(--fg); }
-  input { flex:1; min-width:0; }
+         border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  input[type=text], input[type=search] { flex:1; min-width:0; width:100%; }
+  select { width:100%; }
   button { background:var(--accent); color:#fff; border:none; font-weight:600; }
-  #status { color:var(--sub); font-size:14px; margin:8px 0; min-height:20px; }
+  button.ghost { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+
+  details { background:var(--card); border-radius:14px; margin-bottom:8px; }
+  summary { padding:12px; cursor:pointer; font-weight:600; list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:"▾"; float:right; color:var(--sub); }
+  details[open] summary::after { content:"▴"; }
+  #summary { display:block; font-weight:400; font-size:13px; color:var(--sub); margin-top:2px; }
+  .panel { padding:0 12px 12px; border-top:1px solid var(--line); }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
+  .field label { display:block; font-size:13px; color:var(--sub); margin-bottom:4px; }
+  .field.wide { grid-column:1 / -1; }
+  .check { display:flex; align-items:center; gap:8px; font-size:16px; padding:10px 0; }
+  .check input { width:20px; height:20px; }
+
+  .bar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:12px 0 8px; }
+  #status { color:var(--sub); font-size:14px; }
+  .bar select { width:auto; padding:8px; font-size:14px; }
+
   .card { background:var(--card); border-radius:14px; padding:12px; margin-bottom:10px; }
   .item { display:flex; gap:12px; text-decoration:none; color:inherit; }
-  .shots { display:flex; gap:8px; overflow-x:auto; margin-top:10px; -webkit-overflow-scrolling:touch; }
-  .shots img { height:180px; width:auto; border-radius:10px; flex:none; }
   .item img { width:64px; height:64px; border-radius:14px; flex:none; }
   .name { font-weight:600; font-size:15px; }
   .meta { color:var(--sub); font-size:13px; margin-top:2px; }
+  .shots { display:flex; gap:8px; overflow-x:auto; margin-top:10px; -webkit-overflow-scrolling:touch; }
+  .shots img { height:180px; width:auto; border-radius:10px; flex:none; }
 </style>
 </head>
 <body>
 <h1>新着ゲームさがし</h1>
 
 <div class="row">
-  <input id="kw" placeholder="キーワード（空欄でゲーム全般）" aria-label="キーワード（スペース区切り）">
+  <input type="text" id="kw" placeholder="キーワード（空欄でゲーム全般）" aria-label="キーワード（スペース区切り）">
   <button id="go">検索</button>
 </div>
-<div class="row">
-  <select id="genre" aria-label="ジャンル">
-    <option value="">すべてのゲーム</option>
-    <option>ロールプレイング</option><option>パズル</option><option>アクション</option>
-    <option>シミュレーション</option><option>ストラテジー</option><option>カジュアル</option>
-    <option>レース</option><option>スポーツ</option><option>アドベンチャー</option>
-    <option>カード</option><option>音楽</option>
+
+<details id="filters">
+  <summary>絞り込み<span id="summary"></span></summary>
+  <div class="panel">
+    <div class="grid">
+      <div class="field">
+        <label for="genre">ジャンル</label>
+        <select id="genre">
+          <option value="">すべて</option>
+          <option>ロールプレイング</option><option>パズル</option><option>アクション</option>
+          <option>シミュレーション</option><option>ストラテジー</option><option>カジュアル</option>
+          <option>レース</option><option>スポーツ</option><option>アドベンチャー</option>
+          <option>カード</option><option>音楽</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="device">対応端末</label>
+        <select id="device">
+          <option value="">すべて</option>
+          <option value="iphone" selected>iPhone対応</option>
+          <option value="ipad">iPad対応</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="days">公開日</label>
+        <select id="days">
+          <option value="7">7日以内</option>
+          <option value="30" selected>30日以内</option>
+          <option value="90">90日以内</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="free">価格</label>
+        <div class="check"><input type="checkbox" id="free"><span>無料のみ</span></div>
+      </div>
+      <div class="field wide">
+        <label for="dev">開発者名</label>
+        <input type="search" id="dev" placeholder="名前の一部を入力">
+      </div>
+    </div>
+    <button type="button" class="ghost" id="reset">条件をリセット</button>
+  </div>
+</details>
+
+<div class="bar">
+  <div id="status">キーワードは空欄でもOK。「検索」を押すとゲーム全般から探します。</div>
+  <select id="sort" aria-label="並び替え">
+    <option value="date">新しい順</option>
+    <option value="rating">評価が高い順</option>
+    <option value="count">評価数が多い順</option>
   </select>
-  <select id="device" aria-label="対応端末">
-    <option value="">すべての端末</option>
-    <option value="iphone" selected>iPhone対応</option>
-    <option value="ipad">iPad対応</option>
-  </select>
-  <label style="display:flex;align-items:center;gap:6px;font-size:16px;">
-    <input type="checkbox" id="free" style="flex:none;width:20px;height:20px;"> 無料のみ
-  </label>
 </div>
-<div class="row">
-  <select id="days" aria-label="期間">
-    <option value="7">7日以内</option>
-    <option value="30" selected>30日以内</option>
-    <option value="90">90日以内</option>
-  </select>
-</div>
-<div id="status">キーワードは空欄でもOK。ゲーム全般から探します。</div>
 <div id="list"></div>
 
 <script>
+let pool = [];  // 検索で取得したゲーム全部。絞り込み・並び替えはここから即時に再表示する
+const $ = id => document.getElementById(id);
+
 // iTunes Search API を JSONP（scriptタグ方式）で呼び出す
 function jsonp(url) {
   return new Promise((resolve, reject) => {
@@ -82,69 +131,121 @@ function esc(t) {
     ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 }
 
-async function search() {
-  const DEFAULT_WORDS = ["ゲーム","RPG","パズル","アクション","放置","カジュアル","シミュレーション","育成","バトル","ストラテジー","アドベンチャー","レース","スポーツ","カード","脱出","ローグライク","タワーディフェンス","ミニゲーム"];
-  const typed = document.getElementById("kw").value.trim().split(/\s+/).filter(Boolean);
-  const words = typed.length ? typed : DEFAULT_WORDS;
-  const genre = document.getElementById("genre").value;
-  const device = document.getElementById("device").value;
-  const freeOnly = document.getElementById("free").checked;
-  const days = Number(document.getElementById("days").value);
-  const status = document.getElementById("status");
-  const list = document.getElementById("list");
-  if (!words.length) { status.textContent = "キーワードを入力してください。"; return; }
+function formatSize(bytes) {
+  const n = Number(bytes);
+  if (!n) return "";
+  return n >= 1e9 ? (n / 1e9).toFixed(1) + " GB" : Math.round(n / 1e6) + " MB";
+}
 
-  status.textContent = "検索中…";
-  list.innerHTML = "";
+// 今の絞り込み条件を、閉じたままでも分かるように1行で見せる
+function updateSummary() {
+  const parts = [];
+  if ($("genre").value) parts.push($("genre").value);
+  if ($("device").value) parts.push($("device").selectedOptions[0].text);
+  parts.push($("days").selectedOptions[0].text);
+  if ($("free").checked) parts.push("無料のみ");
+  if ($("dev").value.trim()) parts.push("開発者：" + $("dev").value.trim());
+  $("summary").textContent = parts.join(" ・ ");
+}
 
-  try {
-    const results = await Promise.all(words.map(w =>
-      jsonp("https://itunes.apple.com/search?country=jp&entity=software&limit=200&term=" + encodeURIComponent(w))
-    ));
+function filtered() {
+  const genre = $("genre").value, device = $("device").value;
+  const freeOnly = $("free").checked, dev = $("dev").value.trim().toLowerCase();
+  const since = Date.now() - Number($("days").value) * 86400000;
+  const sort = $("sort").value;
 
-    // 重複を除き、ゲームだけ、期間内だけに絞る
-    const seen = new Map();
-    const since = Date.now() - days * 86400000;
-    for (const r of results) {
-      for (const a of r.results || []) {
-        const isGame = (a.genres || []).some(g => g === "ゲーム" || g === "Games");
-        const genreOk = !genre || (a.genres || []).includes(genre);
-        const devs = a.supportedDevices || [];
-        const deviceOk = !device ||
-          (device === "iphone" && ((a.screenshotUrls || []).length > 0 || devs.some(d => d.includes("iPhone")))) ||
-          (device === "ipad" && ((a.ipadScreenshotUrls || []).length > 0 || devs.some(d => d.includes("iPad"))));
-        const priceOk = !freeOnly || a.price === 0;
-        if (isGame && genreOk && deviceOk && priceOk && new Date(a.releaseDate).getTime() >= since) seen.set(a.trackId, a);
-      }
-    }
+  const apps = pool.filter(a => {
+    const devs = a.supportedDevices || [];
+    const genreOk = !genre || (a.genres || []).includes(genre);
+    const deviceOk = !device ||
+      (device === "iphone" && ((a.screenshotUrls || []).length > 0 || devs.some(d => d.includes("iPhone")))) ||
+      (device === "ipad" && ((a.ipadScreenshotUrls || []).length > 0 || devs.some(d => d.includes("iPad"))));
+    const priceOk = !freeOnly || a.price === 0;
+    const devOk = !dev || (a.artistName || "").toLowerCase().includes(dev);
+    return genreOk && deviceOk && priceOk && devOk && new Date(a.releaseDate).getTime() >= since;
+  });
 
-    // 公開日が新しい順
-    const apps = [...seen.values()].sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
+  if (sort === "rating") apps.sort((a, b) => (b.averageUserRating || 0) - (a.averageUserRating || 0));
+  else if (sort === "count") apps.sort((a, b) => (b.userRatingCount || 0) - (a.userRatingCount || 0));
+  else apps.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
+  return apps;
+}
 
-    if (!apps.length) { status.textContent = "見つかりませんでした。期間を広げるか、別のキーワードを試してください。"; return; }
-    status.textContent = apps.length + "件見つかりました（公開日が新しい順）";
-    list.innerHTML = apps.map(a => {
-      const shots = (a.screenshotUrls && a.screenshotUrls.length ? a.screenshotUrls : a.ipadScreenshotUrls || []).slice(0, 5);
-      return `
+function render() {
+  updateSummary();
+  if (!pool.length) return;  // まだ検索していない、または0件のときは、検索側のメッセージを残す
+  const apps = filtered();
+
+  if (!apps.length) {
+    $("status").textContent = "条件に合うゲームがありません。絞り込みを緩めてみてください。";
+    $("list").innerHTML = "";
+    return;
+  }
+  $("status").textContent = apps.length + "件";
+
+  $("list").innerHTML = apps.map(a => {
+    const shots = (a.screenshotUrls && a.screenshotUrls.length ? a.screenshotUrls : a.ipadScreenshotUrls || []).slice(0, 5);
+    const rating = a.userRatingCount ? "★" + a.averageUserRating.toFixed(1) + "（" + a.userRatingCount + "件）" : "評価なし";
+    const size = formatSize(a.fileSizeBytes);
+    return `
       <div class="card">
         <a class="item" href="${esc(a.trackViewUrl)}" target="_blank" rel="noopener">
           <img src="${esc(a.artworkUrl100)}" alt="">
           <div>
             <div class="name">${esc(a.trackName)}</div>
-            <div class="meta">公開日 ${esc(a.releaseDate.slice(0, 10))}</div>
-            <div class="meta">${esc(a.primaryGenreName)} ／ ${a.formattedPrice ? esc(a.formattedPrice) : ""}</div>
+            <div class="meta">${esc(a.artistName || "")}</div>
+            <div class="meta">公開日 ${esc(a.releaseDate.slice(0, 10))} ／ ${esc(rating)}</div>
+            <div class="meta">${esc(a.primaryGenreName)} ／ ${a.formattedPrice ? esc(a.formattedPrice) : ""}${size ? " ／ " + esc(size) : ""}</div>
           </div>
         </a>
         ${shots.length ? `<div class="shots">${shots.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>` : ""}
       </div>`;
-    }).join("");
+  }).join("");
+}
+
+async function search() {
+  const DEFAULT_WORDS = ["ゲーム","RPG","パズル","アクション","放置","カジュアル","シミュレーション","育成","バトル","ストラテジー","アドベンチャー","レース","スポーツ","カード","脱出","ローグライク","タワーディフェンス","ミニゲーム"];
+  const typed = $("kw").value.trim().split(/\s+/).filter(Boolean);
+  const words = typed.length ? typed : DEFAULT_WORDS;
+
+  $("status").textContent = "検索中…";
+  $("list").innerHTML = "";
+  pool = [];
+
+  try {
+    const results = await Promise.all(words.map(w =>
+      jsonp("https://itunes.apple.com/search?country=jp&entity=software&limit=200&term=" + encodeURIComponent(w))
+    ));
+    // 重複を除き、ゲームだけを残す（そのほかの絞り込みは render() で行う）
+    const seen = new Map();
+    for (const r of results) {
+      for (const a of r.results || []) {
+        if ((a.genres || []).some(g => g === "ゲーム" || g === "Games")) seen.set(a.trackId, a);
+      }
+    }
+    pool = [...seen.values()];
+    if (!pool.length) { $("status").textContent = "見つかりませんでした。別のキーワードを試してください。"; return; }
+    render();
   } catch (e) {
-    status.textContent = "取得できませんでした。通信状況を確認して、もう一度試してください。";
+    $("status").textContent = "取得できませんでした。通信状況を確認して、もう一度試してください。";
   }
 }
 
-document.getElementById("go").addEventListener("click", search);
-document.getElementById("kw").addEventListener("keydown", e => { if (e.key === "Enter") search(); });
+function resetFilters() {
+  $("genre").value = "";
+  $("device").value = "iphone";
+  $("days").value = "30";
+  $("free").checked = false;
+  $("dev").value = "";
+  render();
+}
+
+$("go").addEventListener("click", search);
+$("kw").addEventListener("keydown", e => { if (e.key === "Enter") search(); });
+["genre", "device", "days", "free", "sort"].forEach(id => $(id).addEventListener("change", render));
+$("dev").addEventListener("input", render);
+$("reset").addEventListener("click", resetFilters);
+updateSummary();
 </script>
 </body>
 </html>
