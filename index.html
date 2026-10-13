@@ -30,17 +30,24 @@
 <h1>新着ゲームさがし</h1>
 
 <div class="row">
-  <input id="kw" value="RPG パズル アクション" aria-label="キーワード（スペース区切り）">
+  <input id="kw" placeholder="キーワード（空欄でゲーム全般）" aria-label="キーワード（スペース区切り）">
   <button id="go">検索</button>
 </div>
 <div class="row">
+  <select id="genre" aria-label="ジャンル">
+    <option value="">すべてのゲーム</option>
+    <option>ロールプレイング</option><option>パズル</option><option>アクション</option>
+    <option>シミュレーション</option><option>ストラテジー</option><option>カジュアル</option>
+    <option>レース</option><option>スポーツ</option><option>アドベンチャー</option>
+    <option>カード</option><option>音楽</option>
+  </select>
   <select id="days" aria-label="期間">
     <option value="7">7日以内</option>
     <option value="30" selected>30日以内</option>
     <option value="90">90日以内</option>
   </select>
 </div>
-<div id="status">キーワードはスペースで区切ると、まとめて検索します。</div>
+<div id="status">キーワードは空欄でもOK。ゲーム全般から探します。</div>
 <div id="list"></div>
 
 <script>
@@ -64,7 +71,10 @@ function esc(t) {
 }
 
 async function search() {
-  const words = document.getElementById("kw").value.trim().split(/\s+/).filter(Boolean);
+  const DEFAULT_WORDS = ["ゲーム","RPG","パズル","アクション","放置","カジュアル","シミュレーション","育成","バトル","ストラテジー","アドベンチャー","レース","スポーツ","カード","脱出","ローグライク","タワーディフェンス","ミニゲーム"];
+  const typed = document.getElementById("kw").value.trim().split(/\s+/).filter(Boolean);
+  const words = typed.length ? typed : DEFAULT_WORDS;
+  const genre = document.getElementById("genre").value;
   const days = Number(document.getElementById("days").value);
   const status = document.getElementById("status");
   const list = document.getElementById("list");
@@ -84,7 +94,8 @@ async function search() {
     for (const r of results) {
       for (const a of r.results || []) {
         const isGame = (a.genres || []).some(g => g === "ゲーム" || g === "Games");
-        if (isGame && new Date(a.releaseDate).getTime() >= since) seen.set(a.trackId, a);
+        const genreOk = !genre || (a.genres || []).includes(genre);
+        if (isGame && genreOk && new Date(a.releaseDate).getTime() >= since) seen.set(a.trackId, a);
       }
     }
 
