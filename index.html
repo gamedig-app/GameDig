@@ -21,11 +21,11 @@
   button { background:var(--accent); color:#fff; border:none; font-weight:600; }
   button.ghost { background:transparent; color:var(--accent); border:1px solid var(--accent); }
 
-  details { background:var(--card); border-radius:14px; margin-bottom:8px; }
-  summary { padding:12px; cursor:pointer; font-weight:600; list-style:none; }
-  summary::-webkit-details-marker { display:none; }
-  summary::after { content:"▾"; float:right; color:var(--sub); }
-  details[open] summary::after { content:"▴"; }
+  #filters { background:var(--card); border-radius:14px; margin-bottom:8px; }
+  #filters > summary { padding:12px; cursor:pointer; font-weight:600; list-style:none; }
+  #filters > summary::-webkit-details-marker { display:none; }
+  #filters > summary::after { content:"▾"; float:right; color:var(--sub); }
+  #filters[open] > summary::after { content:"▴"; }
   #summary { display:block; font-weight:400; font-size:13px; color:var(--sub); margin-top:2px; }
   .panel { padding:0 12px 12px; border-top:1px solid var(--line); }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
@@ -43,6 +43,10 @@
   .item img { width:64px; height:64px; border-radius:14px; flex:none; }
   .name { font-weight:600; font-size:15px; }
   .meta { color:var(--sub); font-size:13px; margin-top:2px; }
+  .desc { margin-top:10px; }
+  .desc summary { cursor:pointer; font-size:14px; color:var(--accent); padding:4px 0; }
+  .desc-text { font-size:13px; line-height:1.6; white-space:pre-wrap; max-height:260px; overflow-y:auto;
+               margin-top:6px; padding-top:8px; border-top:1px solid var(--line); }
   .shots { display:flex; gap:8px; overflow-x:auto; margin-top:10px; -webkit-overflow-scrolling:touch; }
   .shots img { height:180px; width:auto; border-radius:10px; flex:none; }
 </style>
@@ -51,7 +55,7 @@
 <h1>新着ゲームさがし</h1>
 
 <div class="row">
-  <input type="text" id="kw" placeholder="キーワード（空欄でゲーム全般）" aria-label="キーワード（スペース区切り）">
+  <input type="text" id="kw" placeholder="キーワード（名前・説明文・開発者名）" aria-label="キーワード（スペース区切り）">
   <button id="go">検索</button>
 </div>
 
@@ -78,20 +82,18 @@
         </select>
       </div>
       <div class="field">
-        <label for="days">公開日</label>
+        <label for="days">公開日（期間）</label>
         <select id="days">
           <option value="7">7日以内</option>
           <option value="30" selected>30日以内</option>
           <option value="90">90日以内</option>
+          <option value="365">1年以内</option>
+          <option value="0">すべての期間</option>
         </select>
       </div>
       <div class="field">
         <label for="free">価格</label>
         <div class="check"><input type="checkbox" id="free"><span>無料のみ</span></div>
-      </div>
-      <div class="field wide">
-        <label for="dev">開発者名</label>
-        <input type="search" id="dev" placeholder="名前の一部を入力">
       </div>
     </div>
     <button type="button" class="ghost" id="reset">条件をリセット</button>
@@ -102,6 +104,7 @@
   <div id="status">キーワードは空欄でもOK。「検索」を押すとゲーム全般から探します。</div>
   <select id="sort" aria-label="並び替え">
     <option value="date">新しい順</option>
+    <option value="relevance">関連度順</option>
     <option value="rating">評価が高い順</option>
     <option value="count">評価数が多い順</option>
   </select>
@@ -109,7 +112,8 @@
 <div id="list"></div>
 
 <script>
-let pool = [];  // 検索で取得したゲーム全部。絞り込み・並び替えはここから即時に再表示する
+let pool = [];
+let searchWords = [];  // 最後に「検索」したときのキーワード（空欄なら絞り込まない）  // 検索で取得したゲーム全部。絞り込み・並び替えはここから即時に再表示する
 const $ = id => document.getElementById(id);
 
 // iTunes Search API を JSONP（scriptタグ方式）で呼び出す
@@ -144,14 +148,15 @@ function updateSummary() {
   if ($("device").value) parts.push($("device").selectedOptions[0].text);
   parts.push($("days").selectedOptions[0].text);
   if ($("free").checked) parts.push("無料のみ");
-  if ($("dev").value.trim()) parts.push("開発者：" + $("dev").value.trim());
   $("summary").textContent = parts.join(" ・ ");
 }
 
 function filtered() {
   const genre = $("genre").value, device = $("device").value;
-  const freeOnly = $("free").checked, dev = $("dev").value.trim().toLowerCase();
-  const since = Date.now() - Number($("days").value) * 86400000;
+  const freeOnly = $("free").checked;
+  const words = searchWords.map(w => w.toLowerCase());
+  const daysNum = Number($("days").value);
+  const since = daysNum ? Date.now() - daysNum * 86400000 : 0;
   const sort = $("sort").value;
 
   const apps = pool.filter(a => {
@@ -161,12 +166,14 @@ function filtered() {
       (device === "iphone" && ((a.screenshotUrls || []).length > 0 || devs.some(d => d.includes("iPhone")))) ||
       (device === "ipad" && ((a.ipadScreenshotUrls || []).length > 0 || devs.some(d => d.includes("iPad"))));
     const priceOk = !freeOnly || a.price === 0;
-    const devOk = !dev || (a.artistName || "").toLowerCase().includes(dev);
-    return genreOk && deviceOk && priceOk && devOk && new Date(a.releaseDate).getTime() >= since;
+    const hay = ((a.trackName || "") + " " + (a.description || "") + " " + (a.artistName || "")).toLowerCase();
+    const textOk = words.every(w => hay.includes(w));
+    return genreOk && deviceOk && priceOk && textOk && new Date(a.releaseDate).getTime() >= since;
   });
 
   if (sort === "rating") apps.sort((a, b) => (b.averageUserRating || 0) - (a.averageUserRating || 0));
   else if (sort === "count") apps.sort((a, b) => (b.userRatingCount || 0) - (a.userRatingCount || 0));
+  else if (sort === "relevance") apps.sort((a, b) => a._i - b._i);
   else apps.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
   return apps;
 }
@@ -198,6 +205,7 @@ function render() {
             <div class="meta">${esc(a.primaryGenreName)} ／ ${a.formattedPrice ? esc(a.formattedPrice) : ""}${size ? " ／ " + esc(size) : ""}</div>
           </div>
         </a>
+        ${a.description ? `<details class="desc"><summary>説明を見る</summary><div class="desc-text">${esc(a.description)}</div></details>` : ""}
         ${shots.length ? `<div class="shots">${shots.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>` : ""}
       </div>`;
   }).join("");
@@ -207,6 +215,7 @@ async function search() {
   const DEFAULT_WORDS = ["ゲーム","RPG","パズル","アクション","放置","カジュアル","シミュレーション","育成","バトル","ストラテジー","アドベンチャー","レース","スポーツ","カード","脱出","ローグライク","タワーディフェンス","ミニゲーム"];
   const typed = $("kw").value.trim().split(/\s+/).filter(Boolean);
   const words = typed.length ? typed : DEFAULT_WORDS;
+  searchWords = typed;
 
   $("status").textContent = "検索中…";
   $("list").innerHTML = "";
@@ -220,7 +229,7 @@ async function search() {
     const seen = new Map();
     for (const r of results) {
       for (const a of r.results || []) {
-        if ((a.genres || []).some(g => g === "ゲーム" || g === "Games")) seen.set(a.trackId, a);
+        if ((a.genres || []).some(g => g === "ゲーム" || g === "Games") && !seen.has(a.trackId)) { a._i = seen.size; seen.set(a.trackId, a); }
       }
     }
     pool = [...seen.values()];
@@ -236,14 +245,12 @@ function resetFilters() {
   $("device").value = "iphone";
   $("days").value = "30";
   $("free").checked = false;
-  $("dev").value = "";
   render();
 }
 
 $("go").addEventListener("click", search);
 $("kw").addEventListener("keydown", e => { if (e.key === "Enter") search(); });
 ["genre", "device", "days", "free", "sort"].forEach(id => $(id).addEventListener("change", render));
-$("dev").addEventListener("input", render);
 $("reset").addEventListener("click", resetFilters);
 updateSummary();
 </script>
