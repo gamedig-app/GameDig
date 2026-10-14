@@ -65,6 +65,19 @@
             font-size:13px; color:var(--sub); }
   .devbar button { flex:none; padding:8px 12px; font-size:14px; }
   .more { width:100%; margin:4px 0 12px; padding:14px; }
+  .recent { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:-2px 0 10px; font-size:13px; color:var(--sub); }
+  .chip { background:var(--card); color:var(--fg); border:1px solid var(--line); padding:6px 10px;
+          border-radius:999px; font-size:13px; font-weight:400; }
+  .linkbtn { background:none; border:none; color:var(--sub); font-size:12px; font-weight:400;
+             padding:4px; text-decoration:underline; }
+  .spin { display:inline-block; width:14px; height:14px; border:2px solid var(--line);
+          border-top-color:var(--accent); border-radius:50%; margin-right:8px; vertical-align:-2px;
+          animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration:3s; } }
+  .totop { position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+           width:44px; height:44px; padding:0; border-radius:50%; font-size:20px;
+           box-shadow:0 2px 8px rgba(0,0,0,.3); }
   .meta { color:var(--sub); font-size:13px; margin-top:2px; }
   .desc { margin-top:10px; }
   .desc summary { cursor:pointer; font-size:14px; color:var(--accent); padding:4px 0; }
@@ -82,6 +95,7 @@
   <input type="text" id="kw" placeholder="キーワード（名前・説明文・開発者名）" aria-label="キーワード（スペース区切り）">
   <button id="go">検索</button>
 </div>
+<div id="recent" class="recent" hidden></div>
 
 <details id="filters">
   <summary>絞り込み<span id="summary"></span></summary>
@@ -148,6 +162,8 @@
 <div id="list"></div>
 
 <footer>GameDigはApple Inc.とは無関係の非公式サイトです。<br>App Store、iPhoneはApple Inc.の商標です。<br>データはiTunes Search APIから取得しています。</footer>
+
+<button type="button" id="top" class="totop" hidden aria-label="一番上へ戻る">↑</button>
 
 <script>
 let pool = [];
@@ -271,6 +287,7 @@ function updateMore(total) {
 function render(keepShown) {
   if (!keepShown) shown = PAGE;
   updateSummary();
+  updateUrl();
   $("devbar").hidden = !devMode;
   if (!pool.length) return;  // まだ検索していない、または0件のときは、検索側のメッセージを残す
   const apps = filtered();
@@ -296,7 +313,7 @@ function showMore() {
 // 開発者の名前をタップしたとき、その開発者のゲームを全部出す
 async function showDeveloper(id, name) {
   const before = devMode ? saved : { pool, searchWords };
-  $("status").textContent = "「" + name + "」のゲームを読み込み中…";
+  loading("「" + name + "」のゲームを読み込み中…");
   try {
     const r = await jsonp("https://itunes.apple.com/lookup?country=jp&entity=software&limit=200&id=" + encodeURIComponent(id));
     const list = (r.results || []).filter(a => a.trackId != null && (a.genres || []).some(g => g === "ゲーム" || g === "Games"));
@@ -322,16 +339,78 @@ function backFromDeveloper() {
   render();
 }
 
+// ---- 読み込み中の表示 ----
+function loading(msg) { $("status").innerHTML = '<span class="spin"></span>' + esc(msg); }
+
+// ---- 検索条件をURLに保存（ブックマークやホーム画面追加で、同じ検索を開ける） ----
+let searched = false;   // 一度でも検索したか
+let lastQuery = "";     // 最後に検索したキーワード
+function updateUrl() {
+  if (!searched || devMode) return;
+  const p = new URLSearchParams();
+  p.set("go", "1");
+  if (lastQuery) p.set("q", lastQuery);
+  if ($("genre").value) p.set("genre", $("genre").value);
+  if ($("device").value !== "iphone") p.set("device", $("device").value);
+  if ($("days").value !== "30") p.set("days", $("days").value);
+  if ($("free").checked) p.set("free", "1");
+  if ($("match").value !== "any") p.set("match", $("match").value);
+  if ($("sort").value !== "date") p.set("sort", $("sort").value);
+  try { history.replaceState(null, "", "?" + p.toString()); } catch (e) {}
+}
+function setSelect(id, v) {
+  if (v !== null && v !== undefined && [...$(id).options].some(o => o.value === v)) $(id).value = v;
+}
+function applyUrl() {
+  const p = new URLSearchParams(location.search);
+  if (p.get("go") !== "1") return false;
+  $("kw").value = p.get("q") || "";
+  setSelect("genre", p.get("genre"));
+  setSelect("device", p.has("device") ? p.get("device") : "iphone");
+  setSelect("days", p.get("days") || "30");
+  $("free").checked = p.get("free") === "1";
+  setSelect("match", p.get("match") || "any");
+  setSelect("sort", p.get("sort") || "date");
+  return true;
+}
+
+// ---- 最近の検索（このスマホのブラウザにだけ保存） ----
+const RECENT_KEY = "gamedig.recent";
+function loadRecent() {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_KEY));
+    return Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
+  } catch (e) { return []; }
+}
+function saveRecent(q) {
+  if (!q) return;
+  const list = [q, ...loadRecent().filter(x => x !== q)].slice(0, 5);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch (e) {}
+}
+function renderRecent() {
+  const list = loadRecent();
+  $("recent").hidden = !list.length;
+  $("recent").innerHTML = list.length
+    ? "最近：" + list.map(q => `<button type="button" class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join("")
+      + '<button type="button" class="linkbtn" id="clear-recent">履歴を消す</button>'
+    : "";
+}
+
 async function search() {
   const DEFAULT_WORDS = ["ゲーム","RPG","パズル","アクション","放置","カジュアル","シミュレーション","育成","バトル","ストラテジー","アドベンチャー","レース","スポーツ","カード","脱出","ローグライク","タワーディフェンス","ミニゲーム"];
   const typed = $("kw").value.trim().split(/\s+/).filter(Boolean);
   const words = typed.length ? typed : DEFAULT_WORDS;
   searchWords = typed;
+  lastQuery = typed.join(" ");
+  searched = true;
+  saveRecent(lastQuery);
+  renderRecent();
+  $("go").disabled = true;
   devMode = null;
   saved = null;
   $("devbar").hidden = true;
 
-  $("status").textContent = "検索中…";
+  loading("検索中…");
   $("list").innerHTML = "";
   pool = [];
 
@@ -351,6 +430,8 @@ async function search() {
     render();
   } catch (e) {
     $("status").textContent = "取得できませんでした。通信状況を確認して、もう一度試してください。";
+  } finally {
+    $("go").disabled = false;
   }
 }
 
@@ -373,7 +454,20 @@ $("list").addEventListener("click", e => {
   if (e.target.closest("#more")) showMore();
 });
 $("reset").addEventListener("click", resetFilters);
+$("recent").addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (chip) { $("kw").value = chip.dataset.q; search(); return; }
+  if (e.target.closest("#clear-recent")) {
+    try { localStorage.removeItem(RECENT_KEY); } catch (err) {}
+    renderRecent();
+  }
+});
+const topBtn = $("top");
+window.addEventListener("scroll", () => { topBtn.hidden = window.scrollY < 600; }, { passive: true });
+topBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 updateSummary();
+renderRecent();
+if (applyUrl()) { updateSummary(); search(); }
 </script>
 </body>
 </html>
