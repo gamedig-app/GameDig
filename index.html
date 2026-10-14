@@ -4,6 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GameDig</title>
+<meta name="description" content="App Storeのゲームを掘り出せる検索ページ。新作も過去作も、説明文まで検索できます。">
+<meta name="theme-color" content="#3b5bfd">
+<link rel="icon" href="icon-180.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-title" content="GameDig">
+<meta property="og:type" content="website">
+<meta property="og:title" content="GameDig">
+<meta property="og:description" content="App Storeのゲームを掘り出そう。新作も過去作も、説明文まで検索。">
+<meta property="og:url" content="https://iranaimeru.github.io/GameDig/">
+<meta property="og:image" content="https://iranaimeru.github.io/GameDig/ogp.png">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root { --bg:#f6f7fb; --fg:#1b1d29; --sub:#6b7085; --card:#fff; --accent:#3b5bfd; --line:#d8dbe8; }
   @media (prefers-color-scheme: dark) {
@@ -12,7 +23,11 @@
   * { box-sizing: border-box; }
   body { margin:0; padding:16px; background:var(--bg); color:var(--fg);
          font-family:-apple-system, "Hiragino Sans", sans-serif; }
-  h1 { font-size:20px; margin:0 0 12px; }
+  h1 { font-size:28px; font-weight:800; letter-spacing:-0.5px; margin:0; }
+  h1 span { background:linear-gradient(90deg,#3b5bfd,#a855f7); -webkit-background-clip:text;
+            background-clip:text; color:transparent; }
+  .tag { color:var(--sub); font-size:13px; margin:2px 0 14px; }
+  footer { color:var(--sub); font-size:12px; line-height:1.6; margin:24px 0 8px; text-align:center; }
   .row { display:flex; gap:8px; margin-bottom:8px; }
   input, select, button { font-size:16px; padding:10px; border-radius:10px;
          border:1px solid var(--line); background:var(--card); color:var(--fg); }
@@ -52,7 +67,8 @@
 </style>
 </head>
 <body>
-<h1>GameDig</h1>
+<h1>Game<span>Dig</span></h1>
+<div class="tag">App Storeのゲームを掘り出そう</div>
 
 <div class="row">
   <input type="text" id="kw" placeholder="キーワード（名前・説明文・開発者名）" aria-label="キーワード（スペース区切り）">
@@ -117,6 +133,8 @@
   </select>
 </div>
 <div id="list"></div>
+
+<footer>GameDigはApple Inc.とは無関係の非公式サイトです。<br>App Store、iPhoneはApple Inc.の商標です。<br>データはiTunes Search APIから取得しています。</footer>
 
 <script>
 let pool = [];
