@@ -4,9 +4,9 @@ GameDigは、App Storeのゲームをスマホで手軽に掘り出せるWebペ�
 
 **[ページを開く](https://iranaimeru.github.io/GameDig/)**
 
-<!--
-![GameDigの画面](screenshot.png)
--->
+<p align="center">
+  <img src="IMG_1091.png" width="320" alt="GameDigの画面">
+</p>
 
 ## できること
 
@@ -59,3 +59,4 @@ Appleが公開している [iTunes Search API](https://performance-partners.appl
 | `README.md` | この説明 |
 | `icon-180.png` / `icon-512.png` | ホーム画面用のアイコン |
 | `ogp.png` | URLを共有したときに表示される画像 |
+| `IMG_1091.png` | この説明に載せている、画面のスクリーンショット |
