@@ -2,7 +2,7 @@
 
 GameDigは、App Storeのゲームをスマホで手軽に掘り出せるWebページです。新作だけでなく、全期間からも探せます。iPhoneのSafariで動きます。
 
-**[ページを開く](https://iranaimeru.github.io/GameDig/)**
+**[ページを開く](https://gamedig-app.github.io/GameDig/)**
 
 <p align="center">
   <img src="IMG_1093.jpeg" width="320" alt="GameDigの画面">
