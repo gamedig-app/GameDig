@@ -5,7 +5,7 @@ GameDigは、App Storeのゲームをスマホで手軽に掘り出せるWebペ�
 **[ページを開く](https://iranaimeru.github.io/GameDig/)**
 
 <p align="center">
-  <img src="IMG_1091.png" width="320" alt="GameDigの画面">
+  <img src="IMG_1093.png" width="320" alt="GameDigの画面">
 </p>
 
 ## できること
