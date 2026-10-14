@@ -4,6 +4,10 @@ GameDigは、App Storeのゲームをスマホで手軽に掘り出せるWebペ�
 
 **[ページを開く](https://iranaimeru.github.io/GameDig/)**
 
+<!--
+![GameDigの画面](screenshot.png)
+-->
+
 ## できること
 
 - キーワードでゲームを検索（ゲーム名・説明文・開発者名から探す。空欄ならゲーム全般から探す）
@@ -45,6 +49,7 @@ Appleが公開している [iTunes Search API](https://performance-partners.appl
 - 取得できるのは、キーワード1つにつき上位200件までです。すべてのゲームを網羅できるわけではないので、見つからないときは、キーワードを変えたり、絞り込みを緩めたりしてください。
 - 新作は評価がまだ付いていないことが多く、評価順では下に並びます。
 - 表示される情報はAppleのAPIから取得したもので、内容の正確さは保証できません。
+- GameDigは非公式のサイトで、Apple Inc.とは無関係です。App Store、iPhoneはApple Inc.の商標です。
 
 ## ファイル構成
 
@@ -52,3 +57,5 @@ Appleが公開している [iTunes Search API](https://performance-partners.appl
 | --- | --- |
 | `index.html` | ページ本体（HTML・CSS・JavaScriptを1ファイルにまとめています） |
 | `README.md` | この説明 |
+| `icon-180.png` / `icon-512.png` | ホーム画面用のアイコン |
+| `ogp.png` | URLを共有したときに表示される画像 |
