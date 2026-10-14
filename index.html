@@ -91,6 +91,13 @@
           <option value="0">すべての期間</option>
         </select>
       </div>
+      <div class="field wide">
+        <label for="match">キーワードが複数あるとき</label>
+        <select id="match">
+          <option value="any" selected>いずれかを含む（言い換え・表記ゆれ向き）</option>
+          <option value="all">すべてを含む（絞り込み向き）</option>
+        </select>
+      </div>
       <div class="field">
         <label for="free">価格</label>
         <div class="check"><input type="checkbox" id="free"><span>無料のみ</span></div>
@@ -148,6 +155,7 @@ function updateSummary() {
   if ($("device").value) parts.push($("device").selectedOptions[0].text);
   parts.push($("days").selectedOptions[0].text);
   if ($("free").checked) parts.push("無料のみ");
+  if (searchWords.length > 1) parts.push($("match").value === "all" ? "すべて含む" : "いずれか含む");
   $("summary").textContent = parts.join(" ・ ");
 }
 
@@ -155,6 +163,7 @@ function filtered() {
   const genre = $("genre").value, device = $("device").value;
   const freeOnly = $("free").checked;
   const words = searchWords.map(w => w.toLowerCase());
+  const matchAll = $("match").value === "all";
   const daysNum = Number($("days").value);
   const since = daysNum ? Date.now() - daysNum * 86400000 : 0;
   const sort = $("sort").value;
@@ -167,7 +176,7 @@ function filtered() {
       (device === "ipad" && ((a.ipadScreenshotUrls || []).length > 0 || devs.some(d => d.includes("iPad"))));
     const priceOk = !freeOnly || a.price === 0;
     const hay = ((a.trackName || "") + " " + (a.description || "") + " " + (a.artistName || "")).toLowerCase();
-    const textOk = words.every(w => hay.includes(w));
+    const textOk = !words.length || (matchAll ? words.every(w => hay.includes(w)) : words.some(w => hay.includes(w)));
     return genreOk && deviceOk && priceOk && textOk && new Date(a.releaseDate).getTime() >= since;
   });
 
@@ -245,12 +254,13 @@ function resetFilters() {
   $("device").value = "iphone";
   $("days").value = "30";
   $("free").checked = false;
+  $("match").value = "any";
   render();
 }
 
 $("go").addEventListener("click", search);
 $("kw").addEventListener("keydown", e => { if (e.key === "Enter") search(); });
-["genre", "device", "days", "free", "sort"].forEach(id => $(id).addEventListener("change", render));
+["genre", "device", "days", "free", "sort", "match"].forEach(id => $(id).addEventListener("change", render));
 $("reset").addEventListener("click", resetFilters);
 updateSummary();
 </script>
