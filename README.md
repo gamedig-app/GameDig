@@ -1,6 +1,6 @@
-# 新着ゲームさがし
+# GameDig
 
-App Storeのゲームを、スマホで手軽に探せるWebページです。新作だけでなく、全期間からも探せます。iPhoneのSafariで動きます。
+GameDigは、App Storeのゲームをスマホで手軽に掘り出せるWebページです。新作だけでなく、全期間からも探せます。iPhoneのSafariで動きます。
 
 **[ページを開く](https://iranaimeru.github.io/new-games/)**
 
