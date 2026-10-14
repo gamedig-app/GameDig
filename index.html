@@ -56,7 +56,15 @@
   .card { background:var(--card); border-radius:14px; padding:12px; margin-bottom:10px; }
   .item { display:flex; gap:12px; text-decoration:none; color:inherit; }
   .item img { width:64px; height:64px; border-radius:14px; flex:none; }
-  .name { font-weight:600; font-size:15px; }
+  [hidden] { display:none !important; }
+  a.name { display:block; font-weight:600; font-size:15px; color:inherit; text-decoration:none; }
+  .devlink { background:none; border:none; padding:0; margin:0; font-size:13px; font-weight:400;
+             color:var(--accent); text-align:left; border-radius:0; }
+  .devbar { display:flex; align-items:center; justify-content:space-between; gap:8px;
+            background:var(--card); border-radius:14px; padding:10px 12px; margin-bottom:8px;
+            font-size:13px; color:var(--sub); }
+  .devbar button { flex:none; padding:8px 12px; font-size:14px; }
+  .more { width:100%; margin:4px 0 12px; padding:14px; }
   .meta { color:var(--sub); font-size:13px; margin-top:2px; }
   .desc { margin-top:10px; }
   .desc summary { cursor:pointer; font-size:14px; color:var(--accent); padding:4px 0; }
@@ -126,11 +134,16 @@
 <div class="bar">
   <div id="status">キーワードは空欄でもOK。「検索」を押すとゲーム全般から探します。</div>
   <select id="sort" aria-label="並び替え">
-    <option value="date">新しい順</option>
+    <option value="date">公開が新しい順</option>
+    <option value="updated">更新が新しい順</option>
     <option value="relevance">関連度順</option>
     <option value="rating">評価が高い順</option>
     <option value="count">評価数が多い順</option>
   </select>
+</div>
+<div id="devbar" class="devbar" hidden>
+  <span>開発者のゲームを表示中（絞り込みは適用されません）</span>
+  <button type="button" class="ghost" id="back">← 戻る</button>
 </div>
 <div id="list"></div>
 
@@ -177,14 +190,30 @@ function updateSummary() {
   $("summary").textContent = parts.join(" ・ ");
 }
 
+const PAGE = 50;       // 一度に表示する件数
+let shown = PAGE;
+let devMode = null;    // 開発者の一覧を見ているとき {name}
+let saved = null;      // 開発者の一覧に入る前の状態（戻るボタン用）
+
+function sortApps(apps) {
+  const sort = $("sort").value;
+  const t = d => new Date(d).getTime() || 0;
+  if (sort === "rating") apps.sort((a, b) => (b.averageUserRating || 0) - (a.averageUserRating || 0));
+  else if (sort === "count") apps.sort((a, b) => (b.userRatingCount || 0) - (a.userRatingCount || 0));
+  else if (sort === "relevance") apps.sort((a, b) => a._i - b._i);
+  else if (sort === "updated") apps.sort((a, b) => t(b.currentVersionReleaseDate || b.releaseDate) - t(a.currentVersionReleaseDate || a.releaseDate));
+  else apps.sort((a, b) => t(b.releaseDate) - t(a.releaseDate));
+  return apps;
+}
+
 function filtered() {
+  if (devMode) return sortApps(pool.slice());  // 開発者の一覧は、絞り込みをかけず全部出す
   const genre = $("genre").value, device = $("device").value;
   const freeOnly = $("free").checked;
   const words = searchWords.map(w => w.toLowerCase());
   const matchAll = $("match").value === "all";
   const daysNum = Number($("days").value);
   const since = daysNum ? Date.now() - daysNum * 86400000 : 0;
-  const sort = $("sort").value;
 
   const apps = pool.filter(a => {
     const devs = a.supportedDevices || [];
@@ -197,16 +226,52 @@ function filtered() {
     const textOk = !words.length || (matchAll ? words.every(w => hay.includes(w)) : words.some(w => hay.includes(w)));
     return genreOk && deviceOk && priceOk && textOk && new Date(a.releaseDate).getTime() >= since;
   });
-
-  if (sort === "rating") apps.sort((a, b) => (b.averageUserRating || 0) - (a.averageUserRating || 0));
-  else if (sort === "count") apps.sort((a, b) => (b.userRatingCount || 0) - (a.userRatingCount || 0));
-  else if (sort === "relevance") apps.sort((a, b) => a._i - b._i);
-  else apps.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
-  return apps;
+  return sortApps(apps);
 }
 
-function render() {
+function card(a) {
+  const shots = (a.screenshotUrls && a.screenshotUrls.length ? a.screenshotUrls : a.ipadScreenshotUrls || []).slice(0, 5);
+  const rating = a.userRatingCount ? "★" + a.averageUserRating.toFixed(1) + "（" + a.userRatingCount + "件）" : "評価なし";
+  const size = formatSize(a.fileSizeBytes);
+  const upd = (a.currentVersionReleaseDate || "").slice(0, 10);
+  const dev = a.artistId
+    ? `<button type="button" class="devlink" data-id="${esc(a.artistId)}" data-name="${esc(a.artistName || "")}">${esc(a.artistName || "")}</button>`
+    : esc(a.artistName || "");
+  return `
+    <div class="card">
+      <div class="item">
+        <a href="${esc(a.trackViewUrl)}" target="_blank" rel="noopener"><img src="${esc(a.artworkUrl100)}" alt=""></a>
+        <div>
+          <a class="name" href="${esc(a.trackViewUrl)}" target="_blank" rel="noopener">${esc(a.trackName)}</a>
+          <div class="meta">${dev}</div>
+          ${$("sort").value === "updated" && upd ? `<div class="meta">更新 ${esc(upd)}</div>` : ""}
+          <div class="meta">公開日 ${esc(a.releaseDate.slice(0, 10))} ／ ${esc(rating)}</div>
+          <div class="meta">${esc(a.primaryGenreName)} ／ ${a.formattedPrice ? esc(a.formattedPrice) : ""}${size ? " ／ " + esc(size) : ""}</div>
+        </div>
+      </div>
+      ${a.description ? `<details class="desc"><summary>説明を見る</summary><div class="desc-text">${esc(a.description)}</div></details>` : ""}
+      ${shots.length ? `<div class="shots">${shots.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>` : ""}
+    </div>`;
+}
+
+// 件数の表示と「もっと見る」ボタンを今の状態に合わせる
+function updateMore(total) {
+  const visible = Math.min(shown, total);
+  const prefix = devMode ? "「" + devMode.name + "」のゲーム " : "";
+  $("status").textContent = prefix + (total > visible ? total + "件中 " + visible + "件を表示" : total + "件");
+  const btn = $("more");
+  if (total > visible) {
+    if (!btn) $("list").insertAdjacentHTML("beforeend", '<button type="button" class="more" id="more"></button>');
+    $("more").textContent = "もっと見る（残り" + (total - visible) + "件）";
+  } else if (btn) {
+    btn.remove();
+  }
+}
+
+function render(keepShown) {
+  if (!keepShown) shown = PAGE;
   updateSummary();
+  $("devbar").hidden = !devMode;
   if (!pool.length) return;  // まだ検索していない、または0件のときは、検索側のメッセージを残す
   const apps = filtered();
 
@@ -215,27 +280,46 @@ function render() {
     $("list").innerHTML = "";
     return;
   }
-  $("status").textContent = apps.length + "件";
+  $("list").innerHTML = apps.slice(0, shown).map(card).join("");
+  updateMore(apps.length);
+}
 
-  $("list").innerHTML = apps.map(a => {
-    const shots = (a.screenshotUrls && a.screenshotUrls.length ? a.screenshotUrls : a.ipadScreenshotUrls || []).slice(0, 5);
-    const rating = a.userRatingCount ? "★" + a.averageUserRating.toFixed(1) + "（" + a.userRatingCount + "件）" : "評価なし";
-    const size = formatSize(a.fileSizeBytes);
-    return `
-      <div class="card">
-        <a class="item" href="${esc(a.trackViewUrl)}" target="_blank" rel="noopener">
-          <img src="${esc(a.artworkUrl100)}" alt="">
-          <div>
-            <div class="name">${esc(a.trackName)}</div>
-            <div class="meta">${esc(a.artistName || "")}</div>
-            <div class="meta">公開日 ${esc(a.releaseDate.slice(0, 10))} ／ ${esc(rating)}</div>
-            <div class="meta">${esc(a.primaryGenreName)} ／ ${a.formattedPrice ? esc(a.formattedPrice) : ""}${size ? " ／ " + esc(size) : ""}</div>
-          </div>
-        </a>
-        ${a.description ? `<details class="desc"><summary>説明を見る</summary><div class="desc-text">${esc(a.description)}</div></details>` : ""}
-        ${shots.length ? `<div class="shots">${shots.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>` : ""}
-      </div>`;
-  }).join("");
+// 「もっと見る」: 開いている説明文などを閉じないよう、続きだけを足す
+function showMore() {
+  const apps = filtered();
+  const from = shown;
+  shown += PAGE;
+  $("more").insertAdjacentHTML("beforebegin", apps.slice(from, shown).map(card).join(""));
+  updateMore(apps.length);
+}
+
+// 開発者の名前をタップしたとき、その開発者のゲームを全部出す
+async function showDeveloper(id, name) {
+  const before = devMode ? saved : { pool, searchWords };
+  $("status").textContent = "「" + name + "」のゲームを読み込み中…";
+  try {
+    const r = await jsonp("https://itunes.apple.com/lookup?country=jp&entity=software&limit=200&id=" + encodeURIComponent(id));
+    const list = (r.results || []).filter(a => a.trackId != null && (a.genres || []).some(g => g === "ゲーム" || g === "Games"));
+    list.forEach((a, i) => { a._i = i; });
+    if (!list.length) { $("status").textContent = "「" + name + "」のゲームが見つかりませんでした。"; return; }
+    saved = before;
+    devMode = { name };
+    pool = list;
+    searchWords = [];
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (e) {
+    $("status").textContent = "取得できませんでした。通信状況を確認して、もう一度試してください。";
+  }
+}
+
+function backFromDeveloper() {
+  if (!saved) return;
+  pool = saved.pool;
+  searchWords = saved.searchWords;
+  devMode = null;
+  saved = null;
+  render();
 }
 
 async function search() {
@@ -243,6 +327,9 @@ async function search() {
   const typed = $("kw").value.trim().split(/\s+/).filter(Boolean);
   const words = typed.length ? typed : DEFAULT_WORDS;
   searchWords = typed;
+  devMode = null;
+  saved = null;
+  $("devbar").hidden = true;
 
   $("status").textContent = "検索中…";
   $("list").innerHTML = "";
@@ -278,7 +365,13 @@ function resetFilters() {
 
 $("go").addEventListener("click", search);
 $("kw").addEventListener("keydown", e => { if (e.key === "Enter") search(); });
-["genre", "device", "days", "free", "sort", "match"].forEach(id => $(id).addEventListener("change", render));
+["genre", "device", "days", "free", "sort", "match"].forEach(id => $(id).addEventListener("change", () => render()));
+$("back").addEventListener("click", backFromDeveloper);
+$("list").addEventListener("click", e => {
+  const dev = e.target.closest(".devlink");
+  if (dev) { showDeveloper(dev.dataset.id, dev.dataset.name); return; }
+  if (e.target.closest("#more")) showMore();
+});
 $("reset").addEventListener("click", resetFilters);
 updateSummary();
 </script>
